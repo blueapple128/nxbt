@@ -44,40 +44,41 @@ const ControllerType = {
 
 const KEYMAP = {
     // Left Stick
-    87: "LS_UP",
-    65: "LS_LEFT",
-    68: "LS_RIGHT",
-    83: "LS_DOWN",
-    84: "LS_PRESS",
+    'e': "LS_UP",
+    's': "LS_LEFT",
+    'f': "LS_RIGHT",
+    'd': "LS_DOWN",
+    'g': "LS_PRESS",
     // Right Stick
-    38: "RS_UP",
-    37: "RS_LEFT",
-    39: "RS_RIGHT",
-    40: "RS_DOWN",
-    89: "RS_PRESS",
+    'ArrowUp': "RS_UP",
+    'ArrowLeft': "RS_LEFT",
+    'ArrowRight': "RS_RIGHT",
+    'ArrowDown': "RS_DOWN",
+    'h': "RS_PRESS",
     // Dpad
-    71: "DPAD_UP",
-    86: "DPAD_LEFT",
-    78: "DPAD_RIGHT",
-    66: "DPAD_DOWN",
+    'c': "DPAD_UP",
+    'z': "DPAD_LEFT",
+    'v': "DPAD_RIGHT",
+    'x': "DPAD_DOWN",
     // Home & Capture
-    219: "HOME",
-    221: "CAPTURE",
+    'y': "HOME",
+    't': "CAPTURE",
     // Plus & Minus
-    54: "PLUS",
-    55: "MINUS",
+    'Enter': "PLUS",
+    'Backspace': "MINUS",
     // A B X Y
-    76: "A",
-    75: "B",
-    73: "X",
-    74: "Y",
+    'l': "A",
+    'k': "B",
+    'i': "X",
+    'j': "Y",
     // L & ZL
-    49: "L",
-    50: "ZL",
+    'r': "L",
+    'w': "ZL",
     // R & ZR
-    56: "ZR",
-    57: "R",
+    'o': "ZR",
+    'u': "R",
 }
+let CAMERA_HACK = false;
 
 const LEFT_STICK = [
     "LS_UP",
@@ -240,8 +241,8 @@ function globalKeydownHandler(evt) {
         evt.preventDefault();
     }
 
-    if (Object.keys(KEYMAP).indexOf(JSON.stringify(evt.keyCode)) > -1) {
-        control = KEYMAP[evt.keyCode];
+    if (Object.keys(KEYMAP).indexOf(JSON.stringify(evt.key)) > -1) {
+        control = KEYMAP[evt.key];
         if (LEFT_STICK.indexOf(control) > -1) {
             INPUT_PACKET["L_STICK"][control] = true;
         } else if (RIGHT_STICK.indexOf(control) > -1) {
@@ -261,8 +262,8 @@ function globalKeyupHandler(evt) {
 
     evt = evt || window.event;
     
-    if (Object.keys(KEYMAP).indexOf(JSON.stringify(evt.keyCode)) > -1) {
-        control = KEYMAP[evt.keyCode];
+    if (Object.keys(KEYMAP).indexOf(JSON.stringify(evt.key)) > -1) {
+        control = KEYMAP[evt.key];
         if (LEFT_STICK.indexOf(control) > -1) {
             INPUT_PACKET["L_STICK"][control] = false;
         } else if (RIGHT_STICK.indexOf(control) > -1) {
