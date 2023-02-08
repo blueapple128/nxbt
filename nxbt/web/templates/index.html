@@ -152,11 +152,11 @@
                 </div>
 
                 <div id="controller-input" class="controller-config-subsection">
-                    <h2 class="surface-lighter">Input Device</h2>
-                    <select id="input-device" name="Select an Input Device" onchange="changeInput(event)">
+                    <h2 class="surface-lighter hidden">Input Device</h2>
+                    <select id="input-device" class="hidden" name="Select an Input Device" onchange="changeInput(event)">
                         <option value="keyboard">Keyboard</option>
                     </select>
-                    <p>
+                    <p class="hidden">
                         <strong>Supported Input Devices: </strong>
                         Keyboards, Gamepads
                         <br><br>
@@ -164,14 +164,14 @@
                         a button on the gamepad before it shows up on the
                         input device list.
                     </p>
-                    <h2 class="surface-lighter">Input Sampling Frequency</h2>
-                    <select id="input-frequency" name="Select an Input Sampling Frequency" onchange="changeFrequency(event)">
+                    <h2 class="surface-lighter hidden">Input Sampling Frequency</h2>
+                    <select id="input-frequency" class="hidden" name="Select an Input Sampling Frequency" onchange="changeFrequency(event)">
                         <option value="RAF">Monitor Refresh Rate</option>
                         <option value="240">240Hz</option>
                         <option value="120">120Hz</option>
                         <option value="60">60Hz</option>
                     </select>
-                    <p>
+                    <p class="hidden">
                         Note: "Monitor Refresh Rate" is a more stable but 
                         (potentially) slower frequency. This loop uses the
                         "requestAnimationFrame()" function, rather than 
@@ -233,11 +233,6 @@
                                     <td>Face north (macro)</td>
                                     <td>2</td>
                                 </tr>
-
-                                <tr>
-                                    <td></td>
-                                    <td></td>
-                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -254,7 +249,7 @@
                         </p>
                     </div>
                 </div>
-                <div id="controller-commands" class="controller-config-subsection">
+                <div id="controller-commands" class="hidden controller-config-subsection">
                     <h2 class="surface-lighter">Controller Commands</h2>
                     <button onclick="shutdownController()">Shutdown Controller</button>
                     <button onclick="recreateProController()">Recreate Controller</button>
