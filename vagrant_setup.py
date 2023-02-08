@@ -104,15 +104,16 @@ if __name__ == "__main__":
     print("")
 
     # Choose how to install NXBT (PyPi or Github)
-    invalid_choice = True
-    while invalid_choice:
-        install_choice = input(
-            "Would you like to install NXBT from (1) PyPi or (2) install from local files? (1/2) ")
-        if install_choice in ['1', '2']:
-            invalid_choice = False
-        else:
-            print("Invalid choice. Please choose PyPi (1) or Github clone/install (2)")
-    print("")
+    install_choice = '2'
+    #invalid_choice = True
+    #while invalid_choice:
+    #    install_choice = input(
+    #        "Would you like to install NXBT from (1) PyPi or (2) install from local files? (1/2) ")
+    #    if install_choice in ['1', '2']:
+    #        invalid_choice = False
+    #    else:
+    #        print("Invalid choice. Please choose PyPi (1) or Github clone/install (2)")
+    #print("")
 
     print("Configuring...")
     with open("template_vagrantfile", "r") as f:
