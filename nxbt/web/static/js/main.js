@@ -21,6 +21,11 @@ let HTML_CONTROLLER_MAP = document.getElementById("controller-map");
 let HTML_ERROR_DISPLAY = document.getElementById("error-display");
 let HTML_CONTROLLER_SESSIONS = document.getElementById("controller-sessions");
 let HTML_CONTROLLER_SESSIONS_CONTAINER = document.getElementById("controller-session-container");
+let HTML_SPECIAL_NOTICE = document.getElementById("special-notice");
+let HTML_MACRO_ACTION = document.getElementById("macro-action");
+let HTML_MACRO_DESTINATION = document.getElementById("macro-destination");
+let HTML_AMOUNT_OF_LAG = document.getElementById("amount-of-lag");
+let HTML_MAP_MACRO_BUTTON = document.getElementById("map-macro-button");
 
 const ControllerState = {
     INITIALIZING: "initializing",
@@ -50,10 +55,10 @@ const KEYMAP = {
     'd': "LS_DOWN",
     'g': "LS_PRESS",
     // Right Stick
-    'ArrowUp': "RS_UP",
-    'ArrowLeft': "RS_LEFT",
-    'ArrowRight': "RS_RIGHT",
-    'ArrowDown': "RS_DOWN",
+    ',': "RS_UP",
+    'n': "RS_LEFT",
+    '.': "RS_RIGHT",
+    'm': "RS_DOWN",
     'h': "RS_PRESS",
     // Dpad
     'c': "DPAD_UP",
@@ -61,36 +66,50 @@ const KEYMAP = {
     'v': "DPAD_RIGHT",
     'x': "DPAD_DOWN",
     // Home & Capture
-    'y': "HOME",
-    't': "CAPTURE",
+    'p': "HOME",
+    'q': "CAPTURE",
     // Plus & Minus
-    'Enter': "PLUS",
-    'Backspace': "MINUS",
+    'y': "PLUS",
+    't': "MINUS",
     // A B X Y
     'l': "A",
     'k': "B",
     'i': "X",
     'j': "Y",
     // L & ZL
-    'r': "L",
-    'w': "ZL",
+    'w': "L",
+    'r': "ZL",
     // R & ZR
-    'o': "ZR",
-    'u': "R",
+    'u': "ZR",
+    'o': "R",
 }
-let CAMERA_HACK = false;
+let STICK_PINNED = false;
+let MASH_A = false;
+let QUEUED_MACRO = null;
+let QUEUED_MACRO_TIMEOUT = 0;
+const CAMERA_NORTH_MACRO = `
+Y 0.1s
+1.65s
+R_STICK_PRESS 0.1s
+0.1s
+R_STICK_PRESS 0.1s
+R_STICK@+040+000 0.1s
+R_STICK@-040+000 0.1s
+B 0.1s
+`
+const CAMERA_NORTH_MACRO_TIMEOUT = 2450;
 
 const LEFT_STICK = [
     "LS_UP",
     "LS_LEFT",
     "LS_RIGHT",
-    "LS_DOWN"
+    "LS_DOWN",
 ]
 const RIGHT_STICK = [
     "RS_UP",
     "RS_LEFT",
     "RS_RIGHT",
-    "RS_DOWN"
+    "RS_DOWN",
 ]
 
 let INPUT_PACKET = {
@@ -142,6 +161,7 @@ let INPUT_PACKET = {
     "A": false
 }
 let INPUT_PACKET_OLD = JSON.parse(JSON.stringify(INPUT_PACKET));
+let INPUT_PACKET_BLANK = JSON.parse(JSON.stringify(INPUT_PACKET));
 
 let PRO_CONTROLLER_DISPLAY = {
     // Sticks
@@ -227,6 +247,8 @@ window.onload = function() {
     setInterval(updateLoader, 85);
     // // Print out the latency of setTimeout
     // measureTimeoutLatency.start(120, 60);
+
+    createProController();
 }
 
 // Keydown listener
@@ -237,22 +259,57 @@ function globalKeydownHandler(evt) {
 
     evt = evt || window.event;
     // Prevent scrolling on keypress
-    if([32, 37, 38, 39, 40].indexOf(evt.keyCode) > -1) {
-        evt.preventDefault();
-    }
+    //if([32, 37, 38, 39, 40].indexOf(evt.keyCode) > -1) {
+    //    evt.preventDefault();
+    //}
 
-    if (Object.keys(KEYMAP).indexOf(JSON.stringify(evt.key)) > -1) {
+    if (Object.keys(KEYMAP).indexOf(evt.key) > -1) {
         control = KEYMAP[evt.key];
         if (LEFT_STICK.indexOf(control) > -1) {
             INPUT_PACKET["L_STICK"][control] = true;
         } else if (RIGHT_STICK.indexOf(control) > -1) {
-            INPUT_PACKET["R_STICK"][control] = true;
+            if (!STICK_PINNED) {
+                INPUT_PACKET["R_STICK"][control] = true;
+            }
+        } else if (control == "LS_PRESS") {
+            INPUT_PACKET["L_STICK"]["PRESSED"] = true;
+        } else if (control == "RS_PRESS") {
+            INPUT_PACKET["R_STICK"]["PRESSED"] = true;
         } else {
             INPUT_PACKET[control] = true;
         }
     }
+
+    if (evt.key == '1') {
+        setStickPinned(!STICK_PINNED);
+        if (STICK_PINNED) {
+            HTML_SPECIAL_NOTICE.innerHTML = "Pinning Right Stick";
+        } else {
+            HTML_SPECIAL_NOTICE.innerHTML = "Right Stick no longer pinned";
+        }
+    } else if (evt.key == ';') {
+        MASH_A = !MASH_A;
+        if (MASH_A) {
+            HTML_SPECIAL_NOTICE.innerHTML = "Mashing A";
+        } else {
+            INPUT_PACKET["A"] = false;
+            HTML_SPECIAL_NOTICE.innerHTML = "No longer mashing A";
+        }
+    } else if (evt.key == '2') {
+        QUEUED_MACRO = CAMERA_NORTH_MACRO;
+        QUEUED_MACRO_TIMEOUT = CAMERA_NORTH_MACRO_TIMEOUT;
+        HTML_SPECIAL_NOTICE.innerHTML = "Performing camera north macro";
+    }
 }
 document.onkeydown = globalKeydownHandler;
+
+function setStickPinned(bool) {
+    STICK_PINNED = bool;
+    INPUT_PACKET["R_STICK"]["RS_DOWN"] = STICK_PINNED;
+    INPUT_PACKET["R_STICK"]["RS_UP"] = false;
+    INPUT_PACKET["R_STICK"]["RS_LEFT"] = false;
+    INPUT_PACKET["R_STICK"]["RS_RIGHT"] = false;
+}
 
 // Keyup listener
 function globalKeyupHandler(evt) {
@@ -262,12 +319,18 @@ function globalKeyupHandler(evt) {
 
     evt = evt || window.event;
     
-    if (Object.keys(KEYMAP).indexOf(JSON.stringify(evt.key)) > -1) {
+    if (Object.keys(KEYMAP).indexOf(evt.key) > -1) {
         control = KEYMAP[evt.key];
         if (LEFT_STICK.indexOf(control) > -1) {
             INPUT_PACKET["L_STICK"][control] = false;
         } else if (RIGHT_STICK.indexOf(control) > -1) {
-            INPUT_PACKET["R_STICK"][control] = false;
+            if (!STICK_PINNED) {
+                INPUT_PACKET["R_STICK"][control] = false;
+            }
+        } else if (control == "LS_PRESS") {
+            INPUT_PACKET["L_STICK"]["PRESSED"] = false;
+        } else if (control == "RS_PRESS") {
+            INPUT_PACKET["R_STICK"]["PRESSED"] = false;
         } else {
             INPUT_PACKET[control] = false;
         }
@@ -415,6 +478,9 @@ function checkForLoad() {
                 setInterval(updateStatusIndicator, 1000);
                 eventLoop();
             }, 1000);
+
+            HTML_SPECIAL_NOTICE.innerHTML = "Right Stick is unpinned";
+            updateMapMacroButton();
         }
     }
 }
@@ -483,6 +549,135 @@ function changeFrequency(evt) {
             console.log("New frequency is not a number");
         }
     }
+}
+
+function updateMapMacroButton() {
+    action = Number(HTML_MACRO_ACTION.value);
+    destination = Number(HTML_MACRO_DESTINATION.value);
+    amountOfLag = Number(HTML_AMOUNT_OF_LAG.value);
+
+    mapMacroStr = "";
+    if (action == 0) {
+        mapMacroStr = "estimate lag";
+    } else {
+        if (action == 1) {
+            mapMacroStr += "Fly to ";
+        } else if (action == 2) {
+            mapMacroStr += "plant flag at ";
+        }
+        mapMacroStr += HTML_MACRO_DESTINATION[destination].innerText;
+        mapMacroStr += " with "
+        mapMacroStr += amountOfLag;
+        mapMacroStr += " lag";
+    }
+    HTML_MAP_MACRO_BUTTON.innerHTML = "Press to " + mapMacroStr;
+}
+const coordinates = [
+    [2311, -4755],
+    [2577, -4583],
+    [2458, -4379],
+    [2422, -4111],
+    [2390, -3638],
+    [2325, -3786],
+    [2619, -3821],
+    [2068, -3841],
+    [2742, -3839],
+    [1844, -3935],
+    [1520, -3839],
+    [1337, -3822],
+];
+function performMapMacro() {
+    action = Number(HTML_MACRO_ACTION.value);
+    destination = Number(HTML_MACRO_DESTINATION.value);
+    amountOfLag = Number(HTML_AMOUNT_OF_LAG.value);
+
+    mapMacro = `
+Y 0.1s
+1.65s
+R_STICK_PRESS 0.1s
+0.1s
+R_STICK_PRESS 0.1s
+0.1s
+ZL 0.1s
+L_STICK@-100-100 7.5s
+`;
+    timeout = 9750;
+    if (action == 0) {
+        mapMacro += `
+0.5s
+L_STICK@+050+000 6.8s
+0.5s
+R_STICK_PRESS 0.1s
+0.1s
+R_STICK_PRESS 0.1s
+0.9s
+L_STICK@+050+000 0.2s
+0.8s
+L_STICK@+050+000 0.2s
+0.8s
+L_STICK@+050+000 0.2s
+0.8s
+L_STICK@+050+000 0.2s
+0.8s
+L_STICK@+050+000 0.2s
+0.8s
+L_STICK@+050+000 0.2s
+0.8s
+L_STICK@+050+000 0.2s
+0.8s
+R_STICK_PRESS 0.1s
+0.1s
+R_STICK_PRESS 0.1s
+B 0.1s
+`;
+        timeout += 16100;
+    } else {
+        x = coordinates[destination][0]/5000;
+        y = 1 + coordinates[destination][1]/5000;
+        xSec = Math.round(6.8*35.3/(35.3-amountOfLag)*x*20)/20;
+        ySec = Math.round(7.8*35.3/(35.3-amountOfLag)*y*20)/20;
+        mapMacro += "0.1s\n";
+        mapMacro += "L_STICK@+050+000 ";
+        mapMacro += xSec;
+        mapMacro += "s\n";
+        mapMacro += "L_STICK@+000+050 ";
+        mapMacro += ySec;
+        mapMacro += "s\n";
+        mapMacro += `
+0.5s
+A 0.1s
+0.5s
+DPAD_UP 0.1s
+0.1s
+DPAD_UP 0.1s
+`;
+        timeout += 100 + Math.round(xSec*1000) + Math.round(ySec*1000) + 1400;
+        if (action == 1) {
+            mapMacro += "0.1s\n";
+            mapMacro += "DPAD_UP 0.1s\n";
+            timeout += 200;
+        }
+        mapMacro += "A 0.1s\n";
+        timeout += 100;
+        if (action == 1) {
+            mapMacro += "0.9s\n";
+            mapMacro += "A 0.1s\n";
+            timeout += 1000;
+        }
+        mapMacro += "0.5s\n";
+        mapMacro += "B 0.1s\n";
+        timeout += 600;
+        if (action == 1) {
+            mapMacro += "0.5s\n";
+            mapMacro += "B 0.1s\n";
+            timeout += 600;
+        }
+        timeout += 100;
+    }
+    QUEUED_MACRO = mapMacro;
+    QUEUED_MACRO_TIMEOUT = timeout;
+    HTML_SPECIAL_NOTICE.innerHTML = "Performing macro " +
+        HTML_MAP_MACRO_BUTTON.innerHTML.substring(9);
 }
 
 const LOADER_ANIMATION_FRAMES = [0,1,2,3,3,2,1,0];
@@ -571,6 +766,7 @@ function updateGamepadDisplay() {
 let timeOld = false;
 let frequency = (1/120) * 1000;
 let useRAF = true;
+let mashAThisFrame = false;
 function eventLoop() {
     // Update x/y ratio for the sticks based on
     // pressed buttons if we're using a keyboard
@@ -610,8 +806,19 @@ function eventLoop() {
         }
         INPUT_PACKET["R_STICK"]["X_VALUE"] = rXValue
         INPUT_PACKET["R_STICK"]["Y_VALUE"] = rYValue
+
+        if (MASH_A) {
+            mashAThisFrame = !mashAThisFrame;
+            INPUT_PACKET["A"] = mashAThisFrame;
+        } else {
+            mashAThisFrame = false;
+        }
     } else if (INPUT_DEVICE == InputDevice.GAMEPAD) {
         updateGamepadInput();
+    }
+
+    if (QUEUED_MACRO) {
+        INPUT_PACKET = JSON.parse(JSON.stringify(INPUT_PACKET_BLANK));
     }
 
     // Only send packet if it's not a duplicate of previous.
@@ -620,6 +827,19 @@ function eventLoop() {
     if (JSON.stringify(INPUT_PACKET) !== JSON.stringify(INPUT_PACKET_OLD)) {
         socket.emit('input', JSON.stringify([NXBT_CONTROLLER_INDEX, INPUT_PACKET]));
         INPUT_PACKET_OLD = JSON.parse(JSON.stringify(INPUT_PACKET));
+    }
+
+    if (QUEUED_MACRO) {
+        sendQueuedMacro();
+        setTimeout(function() {
+            setStickPinned(STICK_PINNED);
+            if (STICK_PINNED) {
+                HTML_SPECIAL_NOTICE.innerHTML = "Macro done; resuming pinning Right Stick";
+            } else {
+                HTML_SPECIAL_NOTICE.innerHTML = "Macro done; Right Stick is not pinned";
+            }
+        }, QUEUED_MACRO_TIMEOUT);
+        QUEUED_MACRO = null;
     }
 
     updateGamepadDisplay()
@@ -646,6 +866,10 @@ function eventLoop() {
 function sendMacro() {
     let macro = HTML_MACRO_TEXT.value.toUpperCase();
     socket.emit('macro', JSON.stringify([NXBT_CONTROLLER_INDEX, macro]));
+}
+
+function sendQueuedMacro() {
+    socket.emit('macro', JSON.stringify([NXBT_CONTROLLER_INDEX, QUEUED_MACRO]));
 }
 
 /**********************************************/

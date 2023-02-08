@@ -513,7 +513,7 @@ Controller Config Stying
     min-height: 10rem;
     color: black;
     margin-bottom: 0.25rem;
-    text-transform: uppercase;
+    /*text-transform: uppercase;*/
     box-sizing: border-box;
     padding: 1rem;
 }

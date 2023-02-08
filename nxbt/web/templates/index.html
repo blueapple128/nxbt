@@ -15,7 +15,7 @@
                 </div>
                 <div id="status-indicator" class="hidden surface-lighter">
                     <div id="status-indicator-light" class="indicator-yellow"></div>
-                    <span id="status-indicator-text">Loading</span>
+                    <span id="status-indicator-text" aria-live="polite">Loading</span>
                 </div>
             </div>
         </header>
@@ -52,7 +52,7 @@
                         <div class="loader-block"></div>
                     </div>
                 </div>
-                <div id="loader-text" class="surface-lighter">Loading</div>
+                <div id="loader-text" class="surface-lighter" aria-live="polite">Loading</div>
                 <div class="text-section">
                     <h2>Tips</h2>
                     <h2 class="tip-box">1. First Time Connection</h2>
@@ -107,6 +107,50 @@
                         <div class="control-indicator hidden" id="pc_zr"></div>
                     </div>
                 </div>
+                <div id="special-notice" aria-live="polite"></div>
+                <div class="controller-config-subsection" style="min-width:20%;max-width:20%;">
+                    <h2 class="surface-lighter">Action</h2>
+                    <select id="macro-action" name="Do what?" onchange="updateMapMacroButton()">
+                        <option value="0">Estimate Lag</option>
+                        <option value="1">Fly</option>
+                        <option value="2">Plant Flag</option>
+                    </select>
+                </div>
+                <div class="controller-config-subsection" style="min-width:24%;max-width:24%;">
+                    <h2 class="surface-lighter">Destination</h2>
+                    <select id="macro-destination" name="Where?" onchange="updateMapMacroButton()">
+                        <option value="0">Your House</option>
+                        <option value="1">Poco Path Lighthouse</option>
+                        <option value="2">Los Platos (East)</option>
+                        <option value="3">Mesagoza (South)</option>
+                        <option value="4">Naranja/Uva Academy</option>
+                        <option value="5">Mesagoza (West)</option>
+                        <option value="6">Mesagoza (East)</option>
+                        <option value="7">Mesagoza (West Gate)</option>
+                        <option value="8">Mesagoza (East Gate)</option>
+                        <option value="9">South Province (Area Two)</option>
+                        <option value="10">Cortondo (East)</option>
+                        <option value="11">Cortondo (West)</option>
+                    </select>
+                </div>
+                <div class="controller-config-subsection" style="min-width:20%;max-width:20%;">
+                    <h2 class="surface-lighter">Amount of Lag</h2>
+                    <select id="amount-of-lag" name="How much lag?" onchange="updateMapMacroButton()">
+                        <option value="0">0</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                    </select>
+                </div>
+                <div class="controller-config-subsection" style="min-width:24%;max-width:24%;">
+                    <h2 class="surface-lighter">Perform Map Macro</h2>
+                    <button id="map-macro-button" onclick="performMapMacro()"></button>
+                </div>
+
                 <div id="controller-input" class="controller-config-subsection">
                     <h2 class="surface-lighter">Input Device</h2>
                     <select id="input-device" name="Select an Input Device" onchange="changeInput(event)">
@@ -139,31 +183,31 @@
                             <tbody>
                                 <tr>
                                     <td>Left Stick</td>
-                                    <td>W A S D</td>
+                                    <td>E S D F</td>
                                 </tr>
                                 <tr>
                                     <td>Left Stick Press</td>
-                                    <td>T</td>
+                                    <td>G</td>
                                 </tr>
                                 <tr>
                                     <td>Right Stick</td>
-                                    <td>Arrow Keys</td>
+                                    <td>N M , (comma) . (period)</td>
                                 </tr>
                                 <tr>
                                     <td>Right Stick Press</td>
-                                    <td>Y</td>
+                                    <td>H</td>
                                 </tr>
                                 <tr>
                                     <td>Dpad</td>
-                                    <td>G V B N</td>
+                                    <td>Z X C V</td>
                                 </tr>
                                 <tr>
-                                    <td>Home & Capture</td>
-                                    <td>[ & ]</td>
+                                    <td>Capture & Home</td>
+                                    <td>Q & P</td>
                                 </tr>
                                 <tr>
-                                    <td>Plus & Minus</td>
-                                    <td>6 & 7</td>
+                                    <td>Minus & Plus</td>
+                                    <td>T & Y</td>
                                 </tr>
                                 <tr>
                                     <td>A B X Y</td>
@@ -171,11 +215,28 @@
                                 </tr>
                                 <tr>
                                     <td>L & ZL</td>
-                                    <td>1 & 2</td>
+                                    <td>W & R</td>
                                 </tr>
                                 <tr>
-                                    <td>R & ZR</td>
-                                    <td>8 & 9</td>
+                                    <td>ZR & R</td>
+                                    <td>U & O</td>
+                                </tr>
+                                <tr>
+                                    <td>Mash A (toggle)</td>
+                                    <td>; (semicolon)</td>
+                                </tr>
+                                <tr>
+                                    <td>Pin Right Stick (toggle)</td>
+                                    <td>1</td>
+                                </tr>
+                                <tr>
+                                    <td>Face north (macro)</td>
+                                    <td>2</td>
+                                </tr>
+
+                                <tr>
+                                    <td></td>
+                                    <td></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -214,7 +275,7 @@
                 <div id="controller-session-container"></div>
             </section>
 
-            <section id="error-display"></section>
+            <section id="error-display" aria-live="polite"></section>
 
             <footer>
                 <p>Source Code and Documentation Available <a href="https://github.com/Brikwerk/nxbt" target="_blank">Here</a></p>
