@@ -147,3 +147,5 @@ Vagrantfile
 .vagrant
 cert.pem
 key.pem
+
+*.png
