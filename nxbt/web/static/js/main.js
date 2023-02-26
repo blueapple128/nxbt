@@ -93,6 +93,7 @@ Y 0.1s
 R_STICK_PRESS 0.1s
 0.1s
 R_STICK_PRESS 0.1s
+0.1s
 R_STICK@+040+000 0.1s
 R_STICK@-040+000 0.1s
 B 0.1s
@@ -628,6 +629,7 @@ L_STICK@+050+000 0.2s
 R_STICK_PRESS 0.1s
 0.1s
 R_STICK_PRESS 0.1s
+0.1s
 B 0.1s
 `;
         timeout += 16100;
