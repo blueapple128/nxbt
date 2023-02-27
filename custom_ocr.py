@@ -77,16 +77,29 @@ def objective_minimap():
 
     sparse_output = [item.split(',')[:2] for item in sparse_output]
 
-    top_y = int(sparse_output[0][1])
-    middle_y = [int(pair[1]) for pair in sparse_output][len(sparse_output)//2]
-    bottom_y = int(sparse_output[-1][1])
-    middle_x = sorted([int(pair[0]) for pair in sparse_output])[len(sparse_output)//2]
+    xs = sorted([int(pair[0]) for pair in sparse_output])
+    top_x = xs[0]
+    middle_x = xs[len(sparse_output)//2]
+    bottom_x = xs[-1]
 
-    x = round((middle_x - 180)/3)
+    top_y = int(sparse_output[0][1])
+    middle_y = int(sparse_output[len(sparse_output)//2][1])
+    bottom_y = int(sparse_output[-1][1])
+
+    diff1 = middle_x - top_x
+    diff2 = bottom_x - middle_x
+    if (diff1 < 20 and diff2 < 20) or (diff1 > 30 and diff2 > 30):
+        say(f"Warning, found x-coordinate minimap noise {diff1} {diff2}")
+        x = round((middle_x - 180)/3)
+    elif diff1 < diff2:
+        x = round((top_x - 155)/3)
+    else:
+        x = round((bottom_x - 205)/3)
+
     diff1 = middle_y - top_y
     diff2 = bottom_y - middle_y
     if (diff1 < 20 and diff2 < 20) or (diff1 > 30 and diff2 > 30):
-        say(f"Warning, found minimap noise {diff1} {diff2}")
+        say(f"Warning, found y-coordinate minimap noise {diff1} {diff2}")
         y = round((middle_y - 138)/3)
     elif diff1 < diff2:
         y = round((top_y - 113)/3)
