@@ -26,6 +26,7 @@ let HTML_MACRO_ACTION = document.getElementById("macro-action");
 let HTML_MACRO_DESTINATION = document.getElementById("macro-destination");
 let HTML_AMOUNT_OF_LAG = document.getElementById("amount-of-lag");
 let HTML_MAP_MACRO_BUTTON = document.getElementById("map-macro-button");
+let HTML_LEFT_STICK_SCALAR = document.getElementById("left-stick-scalar")
 
 const ControllerState = {
     INITIALIZING: "initializing",
@@ -281,7 +282,7 @@ function globalKeydownHandler(evt) {
         }
     }
 
-    if (evt.key == '1') {
+    if (evt.key == '!' && evt.ctrlKey) {
         setStickPinned(!STICK_PINNED);
         if (STICK_PINNED) {
             HTML_SPECIAL_NOTICE.innerHTML = "Pinning Right Stick";
@@ -296,7 +297,7 @@ function globalKeydownHandler(evt) {
             INPUT_PACKET["A"] = false;
             HTML_SPECIAL_NOTICE.innerHTML = "No longer mashing A";
         }
-    } else if (evt.key == '2') {
+    } else if (evt.key == '@' && evt.ctrlKey) {
         QUEUED_MACRO = CAMERA_NORTH_MACRO;
         QUEUED_MACRO_TIMEOUT = CAMERA_NORTH_MACRO_TIMEOUT;
         HTML_SPECIAL_NOTICE.innerHTML = "Performing camera north macro";
@@ -770,6 +771,11 @@ let frequency = (1/120) * 1000;
 let useRAF = true;
 let mashAThisFrame = false;
 function eventLoop() {
+     leftStickScalar = Number(HTML_LEFT_STICK_SCALAR.value);
+     if (leftStickScalar <= 1 || leftStickScalar >= 100 || isNaN(leftStickScalar)) {
+        leftStickScalar = 100;
+     }
+
     // Update x/y ratio for the sticks based on
     // pressed buttons if we're using a keyboard
     if (INPUT_DEVICE == InputDevice.KEYBOARD) {
@@ -777,21 +783,21 @@ function eventLoop() {
         lXValue = 0
         lYValue = 0
         if (INPUT_PACKET["L_STICK"]["LS_LEFT"]) {
-            lXValue -= 100
+            lXValue -= leftStickScalar
         }
         if (INPUT_PACKET["L_STICK"]["LS_RIGHT"]) {
-            lXValue += 100
+            lXValue += leftStickScalar
         }
         if (INPUT_PACKET["L_STICK"]["LS_UP"]) {
-            lYValue += 100
+            lYValue += leftStickScalar
         }
         if (INPUT_PACKET["L_STICK"]["LS_DOWN"]) {
-            lYValue -= 100
+            lYValue -= leftStickScalar
         }
         INPUT_PACKET["L_STICK"]["X_VALUE"] = lXValue
         INPUT_PACKET["L_STICK"]["Y_VALUE"] = lYValue
 
-        // Calculating left x/y stick values
+        // Calculating right x/y stick values
         rXValue = 0
         rYValue = 0
         if (INPUT_PACKET["R_STICK"]["RS_LEFT"]) {

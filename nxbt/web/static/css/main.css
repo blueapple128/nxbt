@@ -457,7 +457,7 @@ Controller Config Stying
     padding: 0.25rem;
 }
 
-.controller-config-subsection select {
+.controller-config-subsection select, .controller-config-subsection input {
     width: 99%;
     padding: 0.25rem;
     color: #1a1f28;
