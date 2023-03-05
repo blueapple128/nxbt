@@ -1,16 +1,36 @@
 from pynput.keyboard import Events, Key, Controller
-from PIL import Image, ImageGrab
+from PIL import Image
 import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'foo'
 import pygame.camera, pygame.image
-import subprocess, math, time
+import subprocess, math, time, shlex
 
+has_say = True
 streaming = False
+try:
+    from PIL import ImageGrab
+    has_imagegrab = True
+except ImportError:
+    has_imagegrab = False
+
+def run(command):
+    return subprocess.check_output(shlex.split(command)).decode("utf-8").replace('\r', '')
 
 def say(text):
+    global has_say
+
     print(text)
-    # https://stackoverflow.com/questions/1040655/ms-speech-from-command-line
-    subprocess.run(f'mshta vbscript:Execute("CreateObject(""SAPI.SpVoice"").Speak(""{text}"")(window.close)")')
+    if has_say:
+        try:
+            run(f'say "{text}"')
+        except FileNotFoundError:
+            has_say = False
+        except subprocess.CalledProcessError:
+            pass  # expected
+
+    if not has_say:
+        # https://stackoverflow.com/questions/1040655/ms-speech-from-command-line
+        subprocess.run(f'mshta vbscript:Execute("CreateObject(""SAPI.SpVoice"").Speak(""{text}"")(window.close)")')
 
 def screenshot(camera):
     global streaming
@@ -30,32 +50,38 @@ def screenshot(camera):
                 return True
 
     if streaming:
-        controller = Controller()
-        with controller.pressed(Key.alt):
-            time.sleep(0.1)
-            controller.press(Key.print_screen)
-            controller.release(Key.print_screen)
-            time.sleep(0.1)
+        if has_imagegrab:
+            controller = Controller()
+            with controller.pressed(Key.alt):
+                time.sleep(0.1)
+                controller.press(Key.print_screen)
+                controller.release(Key.print_screen)
+                time.sleep(0.1)
 
-        im = ImageGrab.grabclipboard()
-        w, h = im.size
-        if w != 1920 or h != 1080:
-            say(f"Wrong screenshot size; got {w}x{h} instead of 1920x1080")
-            return False
+            im = ImageGrab.grabclipboard()
+            w, h = im.size
+            if w != 1920 or h != 1080:
+                say(f"Wrong screenshot size; got {w}x{h} instead of 1920x1080")
+                return False
+            else:
+                im.save("screen.png")
+                return True
         else:
-            im.save("screen.png")
+            run('import -window "Fullscreen Projector (Source) - Video Capture Device (V4L2)" screen.png')
             return True
 
 def objective():
-    raw_tessout = subprocess.check_output("tesseract --psm 11 screen.png -").decode("utf-8")
+    raw_tessout = run("tesseract --psm 11 screen.png -")
     if "Map" in raw_tessout:
         objective_map()
     else:
         objective_minimap()
 
+# TODO document where these different color thresholds are coming from
+
 def objective_map():
-    sparse_output = subprocess.check_output('magick screen.png -color-threshold "RGB(215,135,40)-RGB(240,155,75)" -fill transparent -draw "color 0,0 floodfill" -transparent white sparse-color:')
-    sparse_output = sparse_output.decode("utf-8").split()
+    sparse_output = run('magick screen.png -color-threshold "RGB(215,135,40)-RGB(240,155,75)" -fill transparent -draw "color 0,0 floodfill" -transparent white sparse-color:')
+    sparse_output = sparse_output.split()
 
     if not sparse_output:
         say("No exclamation point found")
@@ -85,8 +111,8 @@ def objective_map():
     say(f"About {abs(x)} steps {'right' if x > 0 else 'left'}, {abs(y)} steps {'down' if y > 0 else 'up'}")
 
 def objective_minimap():
-    sparse_output = subprocess.check_output('magick screen.png -crop 360x360+1560+720 -color-threshold "RGB(230,135,25)-RGB(250,195,50)" -transparent black sparse-color:')
-    sparse_output = sparse_output.decode("utf-8").split()
+    sparse_output = run('magick screen.png -crop 360x360+1560+720 -color-threshold "RGB(230,135,25)-RGB(250,195,50)" -transparent black sparse-color:')
+    sparse_output = sparse_output.split()
 
     if len(sparse_output) < 10:
         say("No objective marker found")
@@ -129,9 +155,9 @@ def objective_minimap():
     say(f"About {abs(x)} steps {'right' if x > 0 else 'left'}, {abs(y)} steps {'down' if y > 0 else 'up'}")
 
 def bearing():
-    subprocess.run('magick screen.png -crop 360x360+1560+720 -color-threshold "RGB(19,161,70)-RGB(29,171,80)" -negate ocr.png')
+    run('magick screen.png -crop 360x360+1560+720 -color-threshold "RGB(19,161,70)-RGB(29,171,80)" -negate ocr.png')
 
-    tessout = subprocess.check_output("tesseract --psm 10 ocr.png - makebox").decode("utf-8").replace('\r', '')
+    tessout = run("tesseract --psm 10 ocr.png - makebox")
     tessout = tessout.split('\n')[:-1]
     if not tessout:
         say("Compass not found")
@@ -196,24 +222,31 @@ def bearing():
         say(f"Compass not found but found some different text {match}")
 
 def main():
+    global streaming
+
     pygame.camera.init()
     cameras = pygame.camera.list_cameras()
     cameras = [cam for cam in cameras if 'webcam' not in cam.lower()]
     if len(cameras) > 1:
-        print("Multiple non-webcam video sources found, use which one?")
+        print("Multiple video sources found, use which one?")
         for i in range(len(cameras)):
-            print(f"{i+1}: {cameras[i]}")
+            print(f"{i}: {cameras[i]}")
         while True:
             try:
-                user_input = int(input(f"Enter a number 1 to {len(cameras)}: "))
+                user_input = int(input(f"Enter a number 0 to {len(cameras)-1}: "))
             except ValueError:
                 pass
-            if user_input >= 0 and user_input <= len(cameras):
+            if user_input >= 0 and user_input <= len(cameras)-1:
                 break
-        cap = pygame.camera.Camera(cameras[user_input-1])
+        cap = pygame.camera.Camera(cameras[user_input])
     else:
         cap = pygame.camera.Camera(cameras[0])
-    cap.start()
+    try:
+        # when streaming, fails on Linux but passes on Windows (and then
+        # get_image() fails on Windows)
+        cap.start()
+    except SystemError:
+        streaming = False
 
     with Events() as events:
         ctrl_held = False
@@ -227,10 +260,10 @@ def main():
                 elif event.key == Key.shift:
                     shift_held = True
                 elif ctrl_held and shift_held:
-                    if str(event.key) == '<51>':
+                    if str(event.key) == "'#'" or str(event.key) == '<51>':
                         if screenshot(cap):
                             bearing()
-                    elif str(event.key) == '<52>':
+                    elif str(event.key) == "'$'" or str(event.key) == '<52>':
                         if screenshot(cap):
                             objective()
             elif event.__class__ == Events.Release:
