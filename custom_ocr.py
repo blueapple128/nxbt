@@ -1,30 +1,50 @@
 from pynput.keyboard import Events, Key, Controller
 from PIL import Image, ImageGrab
-import subprocess
-import math
-import time
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'foo'
+import pygame.camera, pygame.image
+import subprocess, math, time
+
+streaming = False
 
 def say(text):
     print(text)
     # https://stackoverflow.com/questions/1040655/ms-speech-from-command-line
     subprocess.run(f'mshta vbscript:Execute("CreateObject(""SAPI.SpVoice"").Speak(""{text}"")(window.close)")')
 
-def screenshot():
-    controller = Controller()
-    with controller.pressed(Key.alt):
-        time.sleep(0.1)
-        controller.press(Key.print_screen)
-        controller.release(Key.print_screen)
-        time.sleep(0.1)
+def screenshot(camera):
+    global streaming
 
-    im = ImageGrab.grabclipboard()
-    w, h = im.size
-    if w != 1920 or h != 1080:
-        say(f"Wrong screenshot size; got {w}x{h} instead of 1920x1080")
-        return False
-    else:
-        im.save("screen.png")
-        return True
+    if not streaming:
+        try:
+            im = camera.get_image()
+        except SystemError:
+            streaming = True
+        if not streaming:
+            w, h = im.get_size()
+            if w != 1920 or h != 1080:
+                say(f"Error, video source is {w}x{h} instead of 1920x1080")
+                return False
+            else:
+                pygame.image.save(im, "screen.png")
+                return True
+
+    if streaming:
+        controller = Controller()
+        with controller.pressed(Key.alt):
+            time.sleep(0.1)
+            controller.press(Key.print_screen)
+            controller.release(Key.print_screen)
+            time.sleep(0.1)
+
+        im = ImageGrab.grabclipboard()
+        w, h = im.size
+        if w != 1920 or h != 1080:
+            say(f"Wrong screenshot size; got {w}x{h} instead of 1920x1080")
+            return False
+        else:
+            im.save("screen.png")
+            return True
 
 def objective():
     raw_tessout = subprocess.check_output("tesseract --psm 11 screen.png -").decode("utf-8")
@@ -176,6 +196,25 @@ def bearing():
         say(f"Compass not found but found some different text {match}")
 
 def main():
+    pygame.camera.init()
+    cameras = pygame.camera.list_cameras()
+    cameras = [cam for cam in cameras if 'webcam' not in cam.lower()]
+    if len(cameras) > 1:
+        print("Multiple non-webcam video sources found, use which one?")
+        for i in range(len(cameras)):
+            print(f"{i+1}: {cameras[i]}")
+        while True:
+            try:
+                user_input = int(input(f"Enter a number 1 to {len(cameras)}: "))
+            except ValueError:
+                pass
+            if user_input >= 0 and user_input <= len(cameras):
+                break
+        cap = pygame.camera.Camera(cameras[user_input-1])
+    else:
+        cap = pygame.camera.Camera(cameras[0])
+    cap.start()
+
     with Events() as events:
         ctrl_held = False
         shift_held = False
@@ -189,10 +228,10 @@ def main():
                     shift_held = True
                 elif ctrl_held and shift_held:
                     if str(event.key) == '<51>':
-                        if screenshot():
+                        if screenshot(cap):
                             bearing()
                     elif str(event.key) == '<52>':
-                        if screenshot():
+                        if screenshot(cap):
                             objective()
             elif event.__class__ == Events.Release:
                 if event.key == Key.ctrl_l or event.key == Key.ctrl_r:
