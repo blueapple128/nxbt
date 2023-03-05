@@ -30,23 +30,28 @@ def screenshot(camera):
     global streaming
 
     if not streaming:
-        try:
-            im = camera.get_image()
-        except SystemError:
-            streaming = True
-        if not streaming:
-            w, h = im.get_size()
-            if w != 1920 or h != 1080:
-                say(f"Error, video source is {w}x{h} instead of 1920x1080")
-                return False
-            else:
-                pygame.image.save(im, "screen.png")
-                return True
+        if linux:
+            try:
+                run('ffmpeg -i /dev/video2 -vf "select=eq(n\\,5)" -frames:v 1 screen.png -y')
+            except subprocess.CalledProcessError:
+                streaming = True
+        else:
+            cap.start()
+            try:
+                im = camera.get_image()
+            except SystemError:
+                streaming = True
+            if not streaming:
+                w, h = im.get_size()
+                if w != 1920 or h != 1080:
+                    say(f"Error, video source is {w}x{h} instead of 1920x1080")
+                    return False
+                else:
+                    pygame.image.save(im, "screen.png")
 
     if streaming:
         if linux:
             run('magick import -window "Fullscreen Projector (Source) - Video Capture Device (V4L2)" screen.png')
-            return True
         else:
             controller = Controller()
             with controller.pressed(Key.alt):
@@ -62,7 +67,8 @@ def screenshot(camera):
                 return False
             else:
                 im.save("screen.png")
-                return True
+
+    return True
 
 def objective():
     raw_tessout = run("tesseract --psm 11 screen.png -")
@@ -216,8 +222,6 @@ def bearing():
         say(f"Compass not found but found some different text {match}")
 
 def main():
-    global streaming
-
     pygame.camera.init()
     cameras = pygame.camera.list_cameras()
     cameras = [cam for cam in cameras if 'webcam' not in cam.lower()]
@@ -235,12 +239,6 @@ def main():
         cap = pygame.camera.Camera(cameras[user_input])
     else:
         cap = pygame.camera.Camera(cameras[0])
-    try:
-        # when streaming, fails on Linux but passes on Windows (and then
-        # get_image() fails on Windows)
-        cap.start()
-    except SystemError:
-        streaming = False
 
     with Events() as events:
         ctrl_held = False
