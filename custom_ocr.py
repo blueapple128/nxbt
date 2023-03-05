@@ -26,19 +26,19 @@ def say(text):
         # https://stackoverflow.com/questions/1040655/ms-speech-from-command-line
         subprocess.run(f'mshta vbscript:Execute("CreateObject(""SAPI.SpVoice"").Speak(""{text}"")(window.close)")')
 
-def screenshot(camera):
+def screenshot(cap, cap_name):
     global streaming
 
     if not streaming:
         if linux:
             try:
-                run('ffmpeg -i /dev/video2 -vf "select=eq(n\\,5)" -frames:v 1 screen.png -y')
+                run(f'ffmpeg -i {cap_name} -vf "select=eq(n\\,5)" -frames:v 1 screen.png -y')
             except subprocess.CalledProcessError:
                 streaming = True
         else:
             cap.start()
             try:
-                im = camera.get_image()
+                im = cap.get_image()
             except SystemError:
                 streaming = True
             if not streaming:
@@ -225,7 +225,12 @@ def main():
     pygame.camera.init()
     cameras = pygame.camera.list_cameras()
     cameras = [cam for cam in cameras if 'webcam' not in cam.lower()]
-    if len(cameras) > 1:
+    if len(cameras) == 0:
+        print("No video sources found other than webcams")
+        return
+    elif len(cameras) == 1:
+        cap_name = cameras[0]
+    else:
         print("Multiple video sources found, use which one?")
         for i in range(len(cameras)):
             print(f"{i}: {cameras[i]}")
@@ -236,9 +241,8 @@ def main():
                 pass
             if user_input >= 0 and user_input <= len(cameras)-1:
                 break
-        cap = pygame.camera.Camera(cameras[user_input])
-    else:
-        cap = pygame.camera.Camera(cameras[0])
+        cap_name = cameras[user_input]
+    cap = pygame.camera.Camera(cap_name)
 
     with Events() as events:
         ctrl_held = False
@@ -253,10 +257,10 @@ def main():
                     shift_held = True
                 elif ctrl_held and shift_held:
                     if str(event.key) == "'#'" or str(event.key) == '<51>':
-                        if screenshot(cap):
+                        if screenshot(cap, cap_name):
                             bearing()
                     elif str(event.key) == "'$'" or str(event.key) == '<52>':
-                        if screenshot(cap):
+                        if screenshot(cap, cap_name):
                             objective()
             elif event.__class__ == Events.Release:
                 if event.key == Key.ctrl_l or event.key == Key.ctrl_r:
