@@ -5,30 +5,24 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = 'foo'
 import pygame.camera, pygame.image
 import subprocess, math, time, shlex
 
-has_say = True
 streaming = False
 try:
     from PIL import ImageGrab
-    has_imagegrab = True
+    linux = False
 except ImportError:
-    has_imagegrab = False
+    linux = True
 
 def run(command):
     return subprocess.check_output(shlex.split(command)).decode("utf-8").replace('\r', '')
 
 def say(text):
-    global has_say
-
     print(text)
-    if has_say:
+    if linux:
         try:
             run(f'say "{text}"')
-        except FileNotFoundError:
-            has_say = False
         except subprocess.CalledProcessError:
-            pass  # expected
-
-    if not has_say:
+            pass  # say always(?) exits 1 for some reason
+    else:
         # https://stackoverflow.com/questions/1040655/ms-speech-from-command-line
         subprocess.run(f'mshta vbscript:Execute("CreateObject(""SAPI.SpVoice"").Speak(""{text}"")(window.close)")')
 
@@ -50,7 +44,10 @@ def screenshot(camera):
                 return True
 
     if streaming:
-        if has_imagegrab:
+        if linux:
+            run('magick import -window "Fullscreen Projector (Source) - Video Capture Device (V4L2)" screen.png')
+            return True
+        else:
             controller = Controller()
             with controller.pressed(Key.alt):
                 time.sleep(0.1)
@@ -66,9 +63,6 @@ def screenshot(camera):
             else:
                 im.save("screen.png")
                 return True
-        else:
-            run('import -window "Fullscreen Projector (Source) - Video Capture Device (V4L2)" screen.png')
-            return True
 
 def objective():
     raw_tessout = run("tesseract --psm 11 screen.png -")
